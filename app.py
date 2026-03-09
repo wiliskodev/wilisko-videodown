@@ -102,25 +102,78 @@ def convert_to_mp4(input_path: Path, output_path: Path) -> Path:
         logger.error(f"Conversion: {e}")
     return input_path
 
+def merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> bool:
+    """Fusionne vidéo + audio avec ffmpeg."""
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(video_path),
+        "-i", str(audio_path),
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ac", "2",
+        "-movflags", "+faststart",
+        str(output_path)
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.returncode == 0 and output_path.exists():
+            logger.info(f"✅ Fusion OK : {output_path.stat().st_size / 1024 / 1024:.1f} Mo")
+            return True
+        logger.error(f"ffmpeg fusion: {result.stderr[:300]}")
+    except Exception as e:
+        logger.error(f"Fusion échouée : {e}")
+    return False
+
 def dl_video(url: str, output_dir: Path, platform: str) -> Path:
     uid = str(uuid.uuid4())[:8]
-    output_file = output_dir / f"video_{uid}.mp4"
+    video_only = output_dir / f"video_only_{uid}.mp4"
+    audio_only = output_dir / f"audio_only_{uid}.m4a"
+    final_file = output_dir / f"video_{uid}.mp4"
     cookies = get_cookies_args(platform)
 
-    cmd = [
+    # Étape 1 : télécharger la meilleure vidéo sans audio
+    cmd_video = [
         "yt-dlp", "--no-playlist", "--no-warnings",
         "-f", "bestvideo[height>=720][ext=mp4]/bestvideo[height>=720]/bestvideo[ext=mp4]/bestvideo",
-        "--merge-output-format", "mp4",
-        "-o", str(output_file),
+        "-o", str(video_only),
     ] + cookies + [url]
 
-    if run_ytdlp(cmd) and output_file.exists():
-        return output_file
+    # Étape 2 : télécharger le meilleur audio
+    cmd_audio = [
+        "yt-dlp", "--no-playlist", "--no-warnings",
+        "-f", "bestaudio[ext=m4a]/bestaudio",
+        "-o", str(audio_only),
+    ] + cookies + [url]
 
-    # Chercher fichier converti
+    logger.info("📥 Téléchargement flux vidéo...")
+    ok_video = run_ytdlp(cmd_video) and video_only.exists()
+
+    logger.info("🔊 Téléchargement flux audio...")
+    ok_audio = run_ytdlp(cmd_audio) and audio_only.exists()
+
+    if ok_video and ok_audio:
+        logger.info("🔗 Fusion vidéo + audio...")
+        if merge_video_audio(video_only, audio_only, final_file):
+            return final_file
+
+    # Fallback : télécharger directement avec audio intégré
+    logger.info("⚠️ Fallback téléchargement direct...")
+    cmd_best = [
+        "yt-dlp", "--no-playlist", "--no-warnings",
+        "-f", "best[ext=mp4]/best",
+        "--merge-output-format", "mp4",
+        "-o", str(final_file),
+    ] + cookies + [url]
+
+    if run_ytdlp(cmd_best) and final_file.exists():
+        return final_file
+
+    # Chercher tout fichier vidéo créé et convertir
     for f in output_dir.iterdir():
         if f.suffix in (".webm", ".mkv", ".mov"):
-            return convert_to_mp4(f, output_file)
+            return convert_to_mp4(f, final_file)
+
     return None
 
 def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
