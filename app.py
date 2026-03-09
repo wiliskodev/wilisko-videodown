@@ -1,7 +1,6 @@
 import os
 import uuid
 import logging
-import tempfile
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
@@ -23,7 +22,6 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Video Downloader")
 templates = Jinja2Templates(directory="templates")
 
-# Dossier temporaire pour les fichiers téléchargés
 DOWNLOAD_DIR = Path("/tmp/downloads")
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
@@ -40,6 +38,9 @@ SUPPORTED = {
     "fb.com": "Facebook",
     "twitter.com": "Twitter/X",
     "x.com": "Twitter/X",
+    "tiktok.com": "TikTok",
+    "vm.tiktok.com": "TikTok",
+    "vt.tiktok.com": "TikTok",
 }
 
 def fix_cookies(content: str) -> str:
@@ -68,6 +69,7 @@ def get_cookies_args(platform: str) -> list:
         return ["--cookies", str(YT_COOKIES_FILE)]
     elif platform == "Facebook" and FB_COOKIES_FILE.exists():
         return ["--cookies", str(FB_COOKIES_FILE)]
+    # TikTok, Twitter/X : pas besoin de cookies
     return []
 
 def run_ytdlp(cmd: list, timeout=300) -> bool:
@@ -103,15 +105,12 @@ def convert_to_mp4(input_path: Path, output_path: Path) -> Path:
     return input_path
 
 def merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> bool:
-    """Fusionne vidéo + audio avec ffmpeg."""
     cmd = [
         "ffmpeg", "-y",
         "-i", str(video_path),
         "-i", str(audio_path),
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-ac", "2",
+        "-c:v", "copy", "-c:a", "aac",
+        "-b:a", "192k", "-ac", "2",
         "-movflags", "+faststart",
         str(output_path)
     ]
@@ -132,14 +131,60 @@ def dl_video(url: str, output_dir: Path, platform: str) -> Path:
     final_file = output_dir / f"video_{uid}.mp4"
     cookies = get_cookies_args(platform)
 
-    # Étape 1 : télécharger la meilleure vidéo sans audio
+    # TikTok : cibler le format sans filigrane (format_id contient "nowatermark" ou "no_watermark")
+    if platform == "TikTok":
+        logger.info("🎵 Téléchargement TikTok sans filigrane...")
+
+        # Méthode 1 : format sans filigrane explicite via format_id
+        cmd_nowm = [
+            "yt-dlp", "--no-playlist", "--no-warnings",
+            "-f", "download_addr-2/play_addr_h264-0/play_addr-0/best[ext=mp4]/best",
+            "--merge-output-format", "mp4",
+            "--extractor-args", "tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com",
+            "-o", str(final_file),
+            url
+        ]
+        if run_ytdlp(cmd_nowm) and final_file.exists():
+            logger.info("✅ TikTok sans filigrane (méthode 1)")
+            return final_file
+
+        # Méthode 2 : user-agent mobile + format mp4
+        cmd_mobile = [
+            "yt-dlp", "--no-playlist", "--no-warnings",
+            "-f", "best[ext=mp4]/best",
+            "--merge-output-format", "mp4",
+            "--add-header", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+            "--add-header", "Referer:https://www.tiktok.com/",
+            "-o", str(final_file),
+            url
+        ]
+        if run_ytdlp(cmd_mobile) and final_file.exists():
+            logger.info("✅ TikTok (méthode 2 mobile)")
+            return final_file
+
+        # Méthode 3 : fallback simple
+        cmd_simple = [
+            "yt-dlp", "--no-playlist", "--no-warnings",
+            "--merge-output-format", "mp4",
+            "-o", str(final_file),
+            url
+        ]
+        if run_ytdlp(cmd_simple) and final_file.exists():
+            logger.info("✅ TikTok (fallback)")
+            return final_file
+
+        for f in output_dir.iterdir():
+            if f.suffix in (".webm", ".mkv", ".mov"):
+                return convert_to_mp4(f, final_file)
+        return None
+
+    # YouTube / Facebook / Twitter : vidéo + audio séparés puis fusion
     cmd_video = [
         "yt-dlp", "--no-playlist", "--no-warnings",
         "-f", "bestvideo[height>=720][ext=mp4]/bestvideo[height>=720]/bestvideo[ext=mp4]/bestvideo",
         "-o", str(video_only),
     ] + cookies + [url]
 
-    # Étape 2 : télécharger le meilleur audio
     cmd_audio = [
         "yt-dlp", "--no-playlist", "--no-warnings",
         "-f", "bestaudio[ext=m4a]/bestaudio",
@@ -157,7 +202,7 @@ def dl_video(url: str, output_dir: Path, platform: str) -> Path:
         if merge_video_audio(video_only, audio_only, final_file):
             return final_file
 
-    # Fallback : télécharger directement avec audio intégré
+    # Fallback
     logger.info("⚠️ Fallback téléchargement direct...")
     cmd_best = [
         "yt-dlp", "--no-playlist", "--no-warnings",
@@ -169,11 +214,9 @@ def dl_video(url: str, output_dir: Path, platform: str) -> Path:
     if run_ytdlp(cmd_best) and final_file.exists():
         return final_file
 
-    # Chercher tout fichier vidéo créé et convertir
     for f in output_dir.iterdir():
         if f.suffix in (".webm", ".mkv", ".mov"):
             return convert_to_mp4(f, final_file)
-
     return None
 
 def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
@@ -181,12 +224,16 @@ def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
     output_mp3 = output_dir / f"audio_{uid}.mp3"
     cookies = get_cookies_args(platform)
 
+    extra = []
+    if platform == "TikTok":
+        extra = ["--add-header", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"]
+
     cmd = [
         "yt-dlp", "--no-playlist", "--no-warnings",
         "-f", "bestaudio",
         "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0",
         "-o", str(output_mp3),
-    ] + cookies + [url]
+    ] + cookies + extra + [url]
 
     if run_ytdlp(cmd) and output_mp3.exists():
         return output_mp3
@@ -196,7 +243,7 @@ def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
         "yt-dlp", "--no-playlist", "--no-warnings",
         "-f", "bestaudio[ext=m4a]/bestaudio",
         "-o", str(output_m4a),
-    ] + cookies + [url]
+    ] + cookies + extra + [url]
 
     if run_ytdlp(cmd2) and output_m4a.exists():
         cmd_conv = [
@@ -232,7 +279,7 @@ async def download(req: DownloadRequest):
 
     platform = detect_platform(url)
     if not platform:
-        raise HTTPException(400, "Plateforme non supportée. Utilise YouTube, Facebook ou Twitter/X.")
+        raise HTTPException(400, "Plateforme non supportée. Utilise YouTube, Facebook, Twitter/X ou TikTok.")
 
     output_dir = DOWNLOAD_DIR / str(uuid.uuid4())
     output_dir.mkdir(parents=True, exist_ok=True)
