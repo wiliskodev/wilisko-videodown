@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DropVid — Téléchargeur de Vidéos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080b14;
+      --surface: #0f1420;
+      --surface2: #161c2e;
+      --border: rgba(255,255,255,0.07);
+      --accent1: #6c63ff;
+      --accent2: #ff6584;
+      --accent3: #43e8d8;
+      --text: #e8eaf6;
+      --muted: #6b7280;
+      --yt: #ff4444;
+      --fb: #1877f2;
+      --tw: #1da1f2;
+      --success: #43e8d8;
+      --error: #ff6584;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background ── */
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg-mesh::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(108,99,255,0.15) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      animation: drift1 12s ease-in-out infinite alternate;
+    }
+    .bg-mesh::after {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(255,101,132,0.1) 0%, transparent 70%);
+      bottom: -150px; right: -150px;
+      animation: drift2 10s ease-in-out infinite alternate;
+    }
+    .bg-blob {
+      position: absolute;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(67,232,216,0.08) 0%, transparent 70%);
+      top: 50%; left: 60%;
+      animation: drift3 14s ease-in-out infinite alternate;
+    }
+    @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(80px, 60px); } }
+    @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-60px, -40px); } }
+    @keyframes drift3 { from { transform: translate(0,-50%); } to { transform: translate(-40px, calc(-50% + 40px)); } }
+
+    /* ── Layout ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+      animation: fadeUp 0.8s ease both;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 30%, var(--accent1));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(32px, 6vw, 52px);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    h1 span {
+      background: linear-gradient(135deg, var(--accent1) 0%, var(--accent2) 50%, var(--accent3) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 300;
+    }
+
+    /* ── Platform badges ── */
+    .platforms {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .badge.yt { border-color: rgba(255,68,68,0.3); color: #ff6b6b; }
+    .badge.fb { border-color: rgba(24,119,242,0.3); color: #60a5fa; }
+    .badge.tw { border-color: rgba(29,161,242,0.3); color: #38bdf8; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      animation: fadeUp 0.8s ease 0.1s both;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent1), var(--accent3), transparent);
+      opacity: 0.5;
+    }
+
+    /* ── Input URL ── */
+    .input-group {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .input-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .url-input-wrap {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="url"], input[type="text"] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="url"]:focus, input[type="text"]:focus {
+      border-color: var(--accent1);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+    input::placeholder { color: var(--muted); }
+
+    /* ── Paste button ── */
+    .btn-paste {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-paste:hover { border-color: var(--accent1); color: var(--accent1); }
+
+    /* ── Mode buttons ── */
+    .mode-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 12px;
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 500px) { .mode-grid { grid-template-columns: 1fr; } }
+
+    .mode-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .mode-btn:hover { border-color: var(--accent1); transform: translateY(-2px); }
+    .mode-btn.active {
+      border-color: var(--accent1);
+      background: rgba(108,99,255,0.1);
+    }
+    .mode-btn .icon { font-size: 26px; margin-bottom: 6px; display: block; }
+    .mode-btn .label {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .mode-btn .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Submit button ── */
+    .btn-download {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.02em;
+    }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(108,99,255,0.4); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Progress / Status ── */
+    .status-box {
+      margin-top: 20px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      display: none;
+      animation: fadeUp 0.3s ease both;
+    }
+    .status-box.show { display: block; }
+    .status-text {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent1);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 999px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent1), var(--accent3));
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.4s ease;
+      animation: progressIndeterminate 1.5s ease infinite;
+    }
+    @keyframes progressIndeterminate {
+      0% { width: 0%; margin-left: 0%; }
+      50% { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    /* ── Results ── */
+    .results {
+      margin-top: 20px;
+      display: none;
+      animation: fadeUp 0.4s ease both;
+    }
+    .results.show { display: block; }
+    .result-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .file-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .file-card:hover { border-color: var(--accent1); }
+    .file-info { display: flex; align-items: center; gap: 12px; }
+    .file-icon { font-size: 28px; }
+    .file-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .file-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .btn-dl {
+      background: linear-gradient(135deg, var(--accent1), var(--accent3));
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-dl:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(108,99,255,0.4); }
+
+    /* ── Error ── */
+    .error-box {
+      margin-top: 16px;
+      padding: 14px 18px;
+      background: rgba(255,101,132,0.1);
+      border: 1px solid rgba(255,101,132,0.3);
+      border-radius: 12px;
+      color: var(--error);
+      font-size: 14px;
+      display: none;
+    }
+    .error-box.show { display: block; animation: fadeUp 0.3s ease both; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 13px;
+      animation: fadeUp 0.8s ease 0.3s both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-mesh"><div class="bg-blob"></div></div>
+
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">DropVid</span>
+    </div>
+    <h1>Télécharge n'importe<br/><span>quelle vidéo</span></h1>
+    <p class="subtitle">HD, MP4, MP3 — sans filigrane, sans inscription</p>
+    <div class="platforms">
+      <span class="badge yt">▶ YouTube</span>
+      <span class="badge fb">f Facebook</span>
+      <span class="badge tw">𝕏 Twitter / X</span>
+    </div>
+  </header>
+
+  <div class="card">
+
+    <!-- URL Input -->
+    <div class="input-group">
+      <label class="input-label">🔗 Lien de la vidéo</label>
+      <div class="url-input-wrap">
+        <input type="url" id="urlInput" placeholder="https://youtube.com/watch?v=..." />
+        <button class="btn-paste" onclick="pasteUrl()" title="Coller">📋</button>
+      </div>
+    </div>
+
+    <!-- Mode selection -->
+    <label class="mode-label">📦 Que veux-tu télécharger ?</label>
+    <div class="mode-grid">
+      <div class="mode-btn active" data-mode="video" onclick="selectMode(this)">
+        <span class="icon">🎥</span>
+        <div class="label">Vidéo HD</div>
+        <div class="desc">Format MP4</div>
+      </div>
+      <div class="mode-btn" data-mode="audio" onclick="selectMode(this)">
+        <span class="icon">🔊</span>
+        <div class="label">Audio seul</div>
+        <div class="desc">Format MP3</div>
+      </div>
+      <div class="mode-btn" data-mode="both" onclick="selectMode(this)">
+        <span class="icon">📦</span>
+        <div class="label">Vidéo + Audio</div>
+        <div class="desc">MP4 + MP3</div>
+      </div>
+    </div>
+
+    <!-- Download button -->
+    <button class="btn-download" id="dlBtn" onclick="startDownload()">
+      ⚡ Télécharger maintenant
+    </button>
+
+    <!-- Status -->
+    <div class="status-box" id="statusBox">
+      <div class="status-text">
+        <div class="spinner"></div>
+        <span id="statusText">Téléchargement en cours...</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <div class="result-title">✅ Prêt à télécharger !</div>
+      <div id="fileList"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>DropVid • Téléchargeur HD gratuit • YouTube · Facebook · Twitter/X</p>
+  </footer>
+
+</div>
+
+<script>
+  let selectedMode = 'video';
+
+  function selectMode(el) {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    selectedMode = el.dataset.mode;
+  }
+
+  async function pasteUrl() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = text;
+    } catch (e) {
+      document.getElementById('urlInput').focus();
+    }
+  }
+
+  function setStatus(msg) {
+    document.getElementById('statusText').textContent = msg;
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '❌ ' + msg;
+    box.classList.add('show');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('show');
+  }
+
+  function showStatus() {
+    document.getElementById('statusBox').classList.add('show');
+    document.getElementById('results').classList.remove('show');
+    hideError();
+  }
+
+  function hideStatus() {
+    document.getElementById('statusBox').classList.remove('show');
+  }
+
+  async function startDownload() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { showError('Colle un lien de vidéo d\'abord !'); return; }
+    if (!url.startsWith('http')) { showError('Le lien doit commencer par http://'); return; }
+
+    const btn = document.getElementById('dlBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ En cours...';
+    showStatus();
+    document.getElementById('fileList').innerHTML = '';
+
+    const messages = [
+      'Connexion à la plateforme...',
+      'Analyse de la vidéo...',
+      'Téléchargement HD en cours...',
+      'Traitement du fichier...',
+      'Presque prêt...'
+    ];
+    let msgIdx = 0;
+    const msgInterval = setInterval(() => {
+      if (msgIdx < messages.length) setStatus(messages[msgIdx++]);
+    }, 3000);
+
+    try {
+      const res = await fetch('/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, mode: selectedMode })
+      });
+
+      clearInterval(msgInterval);
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erreur serveur');
+      }
+
+      const data = await res.json();
+      hideStatus();
+
+      const fileList = document.getElementById('fileList');
+      const icons = { video: '🎥', audio: '🔊' };
+      const labels = { video: 'Vidéo HD (MP4)', audio: 'Audio (MP3)' };
+
+      data.files.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.innerHTML = `
+          <div class="file-info">
+            <span class="file-icon">${icons[f.type] || '📁'}</span>
+            <div>
+              <div class="file-name">${labels[f.type] || f.name}</div>
+              <div class="file-meta">${data.platform} • ${f.size}</div>
+            </div>
+          </div>
+          <a class="btn-dl" href="/file?path=${encodeURIComponent(f.path)}&filename=${encodeURIComponent(f.name)}" download>
+            ⬇ Sauvegarder
+          </a>
+        `;
+        fileList.appendChild(card);
+      });
+
+      document.getElementById('results').classList.add('show');
+
+    } catch (err) {
+      clearInterval(msgInterval);
+      hideStatus();
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ Télécharger maintenant';
+    }
+  }
+
+  // Enter key
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startDownload();
+    });
+  });
+</script>
+
+</body>
+</html>
