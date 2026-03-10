@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-FACEBOOK_COOKIES = os.getenv("FACEBOOK_COOKIES", "")
+FACEBOOK_COOKIES  = os.getenv("FACEBOOK_COOKIES", "")
 INSTAGRAM_COOKIES = os.getenv("INSTAGRAM_COOKIES", "")
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO)
@@ -23,24 +23,23 @@ templates = Jinja2Templates(directory="templates")
 
 DOWNLOAD_DIR = Path("/tmp/downloads")
 DOWNLOAD_DIR.mkdir(exist_ok=True)
-
 COOKIES_DIR = Path("/tmp/cookies")
 COOKIES_DIR.mkdir(exist_ok=True)
-FB_COOKIES_FILE  = COOKIES_DIR / "facebook.txt"
-IG_COOKIES_FILE  = COOKIES_DIR / "instagram.txt"
+FB_COOKIES_FILE = COOKIES_DIR / "facebook.txt"
+IG_COOKIES_FILE = COOKIES_DIR / "instagram.txt"
 
 SUPPORTED = {
-    "facebook.com": "Facebook",
-    "fb.watch":     "Facebook",
-    "fb.com":       "Facebook",
-    "twitter.com":  "Twitter/X",
-    "x.com":        "Twitter/X",
-    "t.co":         "Twitter/X",
-    "tiktok.com":   "TikTok",
-    "vm.tiktok.com":"TikTok",
-    "vt.tiktok.com":"TikTok",
-    "instagram.com":"Instagram",
-    "instagr.am":   "Instagram",
+    "facebook.com":  "Facebook",
+    "fb.watch":      "Facebook",
+    "fb.com":        "Facebook",
+    "twitter.com":   "Twitter/X",
+    "x.com":         "Twitter/X",
+    "t.co":          "Twitter/X",
+    "tiktok.com":    "TikTok",
+    "vm.tiktok.com": "TikTok",
+    "vt.tiktok.com": "TikTok",
+    "instagram.com": "Instagram",
+    "instagr.am":    "Instagram",
 }
 
 def fix_cookies(content: str) -> str:
@@ -63,7 +62,7 @@ def detect_platform(url: str):
     return None
 
 def get_cookies_args(platform: str) -> list:
-    if platform == "Facebook" and FB_COOKIES_FILE.exists():
+    if platform == "Facebook"  and FB_COOKIES_FILE.exists():
         return ["--cookies", str(FB_COOKIES_FILE)]
     if platform == "Instagram" and IG_COOKIES_FILE.exists():
         return ["--cookies", str(IG_COOKIES_FILE)]
@@ -89,110 +88,96 @@ def run_ytdlp(cmd: list, timeout=300) -> bool:
         logger.error(f"yt-dlp exception: {e}")
     return False
 
-def convert_to_mp4(input_path: Path, output_path: Path) -> Path:
-    for codec in [["copy", "copy"], ["libx264", "aac"]]:
-        cmd = [
-            "ffmpeg", "-y", "-i", str(input_path),
-            "-c:v", codec[0], "-c:a", codec[1],
-            "-movflags", "+faststart", str(output_path)
-        ]
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if r.returncode == 0 and output_path.exists():
-                return output_path
-        except Exception as e:
-            logger.error(f"Conversion: {e}")
-    return input_path
-
-def merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> bool:
+def remux_to_mp4(input_path: Path, output_path: Path) -> Path:
+    """Remuxe sans aucun réencodage — qualité 100% originale."""
     cmd = [
-        "ffmpeg", "-y",
-        "-i", str(video_path), "-i", str(audio_path),
-        "-c:v", "copy", "-c:a", "aac",
-        "-b:a", "192k", "-ac", "2",
-        "-movflags", "+faststart", str(output_path)
+        "ffmpeg", "-y", "-i", str(input_path),
+        "-c", "copy",
+        "-movflags", "+faststart",
+        str(output_path)
     ]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if r.returncode == 0 and output_path.exists():
-            logger.info(f"✅ Fusion OK : {output_path.stat().st_size/1024/1024:.1f} Mo")
-            return True
+            return output_path
     except Exception as e:
-        logger.error(f"Fusion: {e}")
-    return False
+        logger.error(f"Remux: {e}")
+    return input_path
 
 def dl_video(url: str, output_dir: Path, platform: str) -> Path:
-    uid = str(uuid.uuid4())[:8]
+    uid     = str(uuid.uuid4())[:8]
     final   = output_dir / f"video_{uid}.mp4"
-    v_only  = output_dir / f"v_{uid}.mp4"
-    a_only  = output_dir / f"a_{uid}.m4a"
     cookies = get_cookies_args(platform)
     ua      = get_useragent(platform)
 
-    # ── TikTok : 3 méthodes sans filigrane ───────────────────────────────────
+    # ── TikTok : qualité originale sans filigrane ────────────────────────────
     if platform == "TikTok":
         attempts = [
-            # Méthode 1 : API TikTok native (sans filigrane)
+            # Méthode 1 : flux API natif sans filigrane (qualité exacte postée)
             ["yt-dlp", "--no-playlist", "--no-warnings",
-             "-f", "download_addr-2/play_addr_h264-0/play_addr-0/best[ext=mp4]/best",
+             "-f", "download_addr-2/play_addr_h264-0/play_addr-0/bestvideo+bestaudio/best",
              "--extractor-args", "tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com",
              "--merge-output-format", "mp4", "-o", str(final), url],
-            # Méthode 2 : user-agent mobile
+            # Méthode 2 : meilleure qualité + user-agent iPhone
             ["yt-dlp", "--no-playlist", "--no-warnings",
-             "-f", "best[ext=mp4]/best",
+             "-f", "bestvideo+bestaudio/best",
              "--merge-output-format", "mp4"] + ua + ["-o", str(final), url],
-            # Méthode 3 : fallback simple
+            # Méthode 3 : fallback
             ["yt-dlp", "--no-playlist", "--no-warnings",
              "--merge-output-format", "mp4", "-o", str(final), url],
         ]
         for i, cmd in enumerate(attempts, 1):
             if run_ytdlp(cmd) and final.exists():
-                logger.info(f"✅ TikTok méthode {i}")
+                logger.info(f"✅ TikTok qualité originale (méthode {i})")
                 return final
         return None
 
     # ── Instagram ─────────────────────────────────────────────────────────────
     if platform == "Instagram":
-        cmd_ig = (
+        for cmd in [
             ["yt-dlp", "--no-playlist", "--no-warnings",
-             "-f", "best[ext=mp4]/best",
-             "--merge-output-format", "mp4"]
-            + cookies + ua + ["-o", str(final), url]
-        )
-        if run_ytdlp(cmd_ig) and final.exists():
-            return final
-        # Fallback sans cookies
-        cmd_ig2 = ["yt-dlp", "--no-playlist", "--no-warnings",
-                   "--merge-output-format", "mp4"] + ua + ["-o", str(final), url]
-        if run_ytdlp(cmd_ig2) and final.exists():
-            return final
+             "-f", "bestvideo+bestaudio/best",
+             "--merge-output-format", "mp4"] + cookies + ua + ["-o", str(final), url],
+            ["yt-dlp", "--no-playlist", "--no-warnings",
+             "-f", "bestvideo+bestaudio/best",
+             "--merge-output-format", "mp4"] + ua + ["-o", str(final), url],
+        ]:
+            if run_ytdlp(cmd) and final.exists():
+                return final
         return None
 
-    # ── Facebook & Twitter/X : vidéo + audio séparés puis fusion ─────────────
-    cmd_v = (["yt-dlp", "--no-playlist", "--no-warnings",
-               "-f", "bestvideo[height>=720][ext=mp4]/bestvideo[height>=720]/bestvideo",
-               "-o", str(v_only)] + cookies + ua + [url])
-    cmd_a = (["yt-dlp", "--no-playlist", "--no-warnings",
-               "-f", "bestaudio[ext=m4a]/bestaudio",
-               "-o", str(a_only)] + cookies + ua + [url])
-
-    ok_v = run_ytdlp(cmd_v) and v_only.exists()
-    ok_a = run_ytdlp(cmd_a) and a_only.exists()
-
-    if ok_v and ok_a and merge_video_audio(v_only, a_only, final):
-        return final
-
-    # Fallback direct
-    cmd_best = (["yt-dlp", "--no-playlist", "--no-warnings",
-                  "-f", "best[ext=mp4]/best",
-                  "--merge-output-format", "mp4",
-                  "-o", str(final)] + cookies + ua + [url])
+    # ── Facebook & Twitter/X ──────────────────────────────────────────────────
+    # yt-dlp sélectionne la meilleure vidéo + meilleur audio et les fusionne
+    # -c copy dans ffmpeg = AUCUN réencodage = qualité 100% originale
+    cmd_best = (
+        ["yt-dlp", "--no-playlist", "--no-warnings",
+         "-f", "bestvideo+bestaudio/bestvideo/best",
+         "--merge-output-format", "mp4",
+         # Passer les args ffmpeg pour forcer la copie sans réencodage
+         "--postprocessor-args", "ffmpeg:-c copy -movflags +faststart",
+         "-o", str(final)]
+        + cookies + ua + [url]
+    )
     if run_ytdlp(cmd_best) and final.exists():
+        logger.info(f"✅ {platform} qualité originale : {final.stat().st_size/1024/1024:.1f} Mo")
         return final
 
+    # Fallback si le remuxage direct échoue
+    cmd_fallback = (
+        ["yt-dlp", "--no-playlist", "--no-warnings",
+         "-f", "bestvideo+bestaudio/best",
+         "--merge-output-format", "mp4",
+         "-o", str(final)]
+        + cookies + ua + [url]
+    )
+    if run_ytdlp(cmd_fallback) and final.exists():
+        return final
+
+    # Remuxer tout fichier non-mp4 sans réencodage
     for f in output_dir.iterdir():
-        if f.suffix in (".webm", ".mkv", ".mov"):
-            return convert_to_mp4(f, final)
+        if f.suffix in (".webm", ".mkv", ".mov") and f != final:
+            return remux_to_mp4(f, final)
+
     return None
 
 def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
@@ -202,16 +187,20 @@ def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
     cookies = get_cookies_args(platform)
     ua      = get_useragent(platform)
 
+    extra = []
+    if platform == "TikTok":
+        extra = ["--extractor-args", "tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com"]
+
     cmd = (["yt-dlp", "--no-playlist", "--no-warnings",
              "-f", "bestaudio",
              "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0",
-             "-o", str(mp3)] + cookies + ua + [url])
+             "-o", str(mp3)] + cookies + ua + extra + [url])
     if run_ytdlp(cmd) and mp3.exists():
         return mp3
 
     cmd2 = (["yt-dlp", "--no-playlist", "--no-warnings",
               "-f", "bestaudio[ext=m4a]/bestaudio",
-              "-o", str(m4a)] + cookies + ua + [url])
+              "-o", str(m4a)] + cookies + ua + extra + [url])
     if run_ytdlp(cmd2) and m4a.exists():
         conv = ["ffmpeg", "-y", "-i", str(m4a),
                 "-codec:a", "libmp3lame", "-qscale:a", "0", str(mp3)]
