@@ -1,380 +1,279 @@
-import os
-import uuid
-import logging
-import subprocess
-from pathlib import Path
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
-from pydantic import BaseModel
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DropVid — Téléchargeur de Vidéos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080b14;
+      --surface: #0f1420;
+      --surface2: #161c2e;
+      --border: rgba(255,255,255,0.07);
+      --accent1: #6c63ff;
+      --accent2: #ff6584;
+      --accent3: #43e8d8;
+      --text: #e8eaf6;
+      --muted: #6b7280;
+      --success: #43e8d8;
+      --error: #ff6584;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
 
-load_dotenv()
+    .bg-mesh { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+    .bg-mesh::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle,rgba(108,99,255,.15) 0%,transparent 70%); top:-200px; left:-200px; animation:drift1 12s ease-in-out infinite alternate; }
+    .bg-mesh::after  { content:''; position:absolute; width:500px; height:500px; background:radial-gradient(circle,rgba(255,101,132,.1) 0%,transparent 70%); bottom:-150px; right:-150px; animation:drift2 10s ease-in-out infinite alternate; }
+    .bg-blob { position:absolute; width:400px; height:400px; background:radial-gradient(circle,rgba(67,232,216,.08) 0%,transparent 70%); top:50%; left:60%; animation:drift3 14s ease-in-out infinite alternate; }
+    @keyframes drift1 { from{transform:translate(0,0)} to{transform:translate(80px,60px)} }
+    @keyframes drift2 { from{transform:translate(0,0)} to{transform:translate(-60px,-40px)} }
+    @keyframes drift3 { from{transform:translate(0,-50%)} to{transform:translate(-40px,calc(-50% + 40px))} }
 
-YOUTUBE_COOKIES = os.getenv("YOUTUBE_COOKIES", "")
-FACEBOOK_COOKIES = os.getenv("FACEBOOK_COOKIES", "")
+    .container { position:relative; z-index:1; max-width:720px; margin:0 auto; padding:60px 24px 100px; }
 
-logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
+    header { text-align:center; margin-bottom:56px; animation:fadeUp .8s ease both; }
+    .logo { display:inline-flex; align-items:center; gap:10px; margin-bottom:20px; }
+    .logo-icon { width:44px; height:44px; background:linear-gradient(135deg,var(--accent1),var(--accent2)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+    .logo-text { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; background:linear-gradient(135deg,#fff 30%,var(--accent1)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    h1 { font-family:'Syne',sans-serif; font-size:clamp(32px,6vw,52px); font-weight:800; line-height:1.1; margin-bottom:16px; }
+    h1 span { background:linear-gradient(135deg,var(--accent1) 0%,var(--accent2) 50%,var(--accent3) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .subtitle { color:var(--muted); font-size:16px; font-weight:300; }
 
-app = FastAPI(title="Video Downloader")
-templates = Jinja2Templates(directory="templates")
+    .platforms { display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .badge { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:500; border:1px solid var(--border); background:var(--surface); }
+    .badge.fb { border-color:rgba(24,119,242,.3); color:#60a5fa; }
+    .badge.tt { border-color:rgba(255,0,80,.3); color:#ff6b9d; }
+    .badge.ig { border-color:rgba(225,48,108,.3); color:#f9a8d4; }
+    .badge.tw { border-color:rgba(29,161,242,.3); color:#38bdf8; }
 
-DOWNLOAD_DIR = Path("/tmp/downloads")
-DOWNLOAD_DIR.mkdir(exist_ok=True)
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px; animation:fadeUp .8s ease .1s both; position:relative; overflow:hidden; }
+    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--accent1),var(--accent3),transparent); opacity:.5; }
 
-COOKIES_DIR = Path("/tmp/cookies")
-COOKIES_DIR.mkdir(exist_ok=True)
-YT_COOKIES_FILE = COOKIES_DIR / "youtube.txt"
-FB_COOKIES_FILE = COOKIES_DIR / "facebook.txt"
+    .input-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:8px; display:block; text-transform:uppercase; letter-spacing:.08em; }
+    .url-input-wrap { display:flex; gap:10px; margin-bottom:24px; }
+    input[type="url"] { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 18px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; outline:none; transition:border-color .2s,box-shadow .2s; }
+    input[type="url"]:focus { border-color:var(--accent1); box-shadow:0 0 0 3px rgba(108,99,255,.15); }
+    input::placeholder { color:var(--muted); }
+    .btn-paste { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; color:var(--muted); cursor:pointer; font-size:18px; transition:all .2s; }
+    .btn-paste:hover { border-color:var(--accent1); color:var(--accent1); }
 
-SUPPORTED = {
-    "youtube.com": "YouTube",
-    "youtu.be": "YouTube",
-    "facebook.com": "Facebook",
-    "fb.watch": "Facebook",
-    "fb.com": "Facebook",
-    "twitter.com": "Twitter/X",
-    "x.com": "Twitter/X",
-    "tiktok.com": "TikTok",
-    "vm.tiktok.com": "TikTok",
-    "vt.tiktok.com": "TikTok",
-}
+    .mode-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:12px; display:block; text-transform:uppercase; letter-spacing:.08em; }
+    .mode-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:24px; }
+    @media(max-width:500px){ .mode-grid{grid-template-columns:1fr;} }
+    .mode-btn { background:var(--surface2); border:1.5px solid var(--border); border-radius:14px; padding:16px 12px; cursor:pointer; text-align:center; transition:all .2s; }
+    .mode-btn:hover { border-color:var(--accent1); transform:translateY(-2px); }
+    .mode-btn.active { border-color:var(--accent1); background:rgba(108,99,255,.1); }
+    .mode-btn .icon { font-size:26px; margin-bottom:6px; display:block; }
+    .mode-btn .label { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--text); }
+    .mode-btn .desc { font-size:11px; color:var(--muted); margin-top:2px; }
 
-def fix_cookies(content: str) -> str:
-    content = content.replace("\\n", "\n")
-    content = content.replace("\\t", "\t")
-    return content
+    .btn-download { width:100%; padding:16px; background:linear-gradient(135deg,var(--accent1),var(--accent2)); border:none; border-radius:14px; color:white; font-family:'Syne',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all .2s; letter-spacing:.02em; }
+    .btn-download:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(108,99,255,.4); }
+    .btn-download:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 
-def setup_cookies():
-    if YOUTUBE_COOKIES:
-        YT_COOKIES_FILE.write_text(fix_cookies(YOUTUBE_COOKIES), encoding="utf-8")
-        logger.info("✅ Cookies YouTube chargés")
-    if FACEBOOK_COOKIES:
-        FB_COOKIES_FILE.write_text(fix_cookies(FACEBOOK_COOKIES), encoding="utf-8")
-        logger.info("✅ Cookies Facebook chargés")
+    .status-box { margin-top:20px; padding:16px 20px; border-radius:14px; border:1px solid var(--border); background:var(--surface2); display:none; animation:fadeUp .3s ease both; }
+    .status-box.show { display:block; }
+    .status-text { font-size:14px; display:flex; align-items:center; gap:10px; }
+    .spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent1); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .progress-bar { height:3px; background:var(--border); border-radius:999px; margin-top:12px; overflow:hidden; }
+    .progress-fill { height:100%; background:linear-gradient(90deg,var(--accent1),var(--accent3)); border-radius:999px; animation:progressAnim 1.5s ease infinite; }
+    @keyframes progressAnim { 0%{width:0%;margin-left:0%} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
 
-setup_cookies()
+    .results { margin-top:20px; display:none; animation:fadeUp .4s ease both; }
+    .results.show { display:block; }
+    .result-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--success); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .file-card { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; transition:border-color .2s; }
+    .file-card:hover { border-color:var(--accent1); }
+    .file-info { display:flex; align-items:center; gap:12px; }
+    .file-icon { font-size:28px; }
+    .file-name { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; }
+    .file-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+    .btn-dl { background:linear-gradient(135deg,var(--accent1),var(--accent3)); border:none; border-radius:10px; padding:10px 20px; color:white; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:all .2s; white-space:nowrap; }
+    .btn-dl:hover { transform:translateY(-1px); box-shadow:0 4px 15px rgba(108,99,255,.4); }
 
-def detect_platform(url: str):
-    for domain, name in SUPPORTED.items():
-        if domain in url:
-            return name
-    return None
+    .error-box { margin-top:16px; padding:14px 18px; background:rgba(255,101,132,.1); border:1px solid rgba(255,101,132,.3); border-radius:12px; color:var(--error); font-size:14px; display:none; }
+    .error-box.show { display:block; animation:fadeUp .3s ease both; }
 
-def get_cookies_args(platform: str) -> list:
-    if platform == "YouTube" and YT_COOKIES_FILE.exists():
-        return ["--cookies", str(YT_COOKIES_FILE)]
-    elif platform == "Facebook" and FB_COOKIES_FILE.exists():
-        return ["--cookies", str(FB_COOKIES_FILE)]
-    # TikTok, Twitter/X : pas besoin de cookies
-    return []
+    footer { text-align:center; margin-top:48px; color:var(--muted); font-size:13px; animation:fadeUp .8s ease .3s both; }
 
-def run_ytdlp(cmd: list, timeout=300) -> bool:
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        if result.returncode == 0:
-            return True
-        logger.error(f"yt-dlp: {result.stderr[:400]}")
-    except Exception as e:
-        logger.error(f"yt-dlp exception: {e}")
-    return False
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+<div class="bg-mesh"><div class="bg-blob"></div></div>
+<div class="container">
 
-def convert_to_mp4(input_path: Path, output_path: Path) -> Path:
-    cmd = [
-        "ffmpeg", "-y", "-i", str(input_path),
-        "-c:v", "copy", "-c:a", "copy",
-        "-movflags", "+faststart", str(output_path)
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if result.returncode == 0 and output_path.exists():
-            return output_path
-        cmd2 = [
-            "ffmpeg", "-y", "-i", str(input_path),
-            "-c:v", "libx264", "-c:a", "aac",
-            "-movflags", "+faststart", str(output_path)
-        ]
-        result2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=300)
-        if result2.returncode == 0 and output_path.exists():
-            return output_path
-    except Exception as e:
-        logger.error(f"Conversion: {e}")
-    return input_path
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">DropVid</span>
+    </div>
+    <h1>Télécharge n'importe<br/><span>quelle vidéo</span></h1>
+    <p class="subtitle">MP4 HD • MP3 • Sans filigrane • Sans inscription</p>
+    <div class="platforms">
+      <span class="badge fb">f Facebook</span>
+      <span class="badge tt">🎵 TikTok</span>
+      <span class="badge ig">📸 Instagram</span>
+      <span class="badge tw">𝕏 Twitter / X</span>
+    </div>
+  </header>
 
-def merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> bool:
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", str(video_path),
-        "-i", str(audio_path),
-        "-c:v", "copy", "-c:a", "aac",
-        "-b:a", "192k", "-ac", "2",
-        "-movflags", "+faststart",
-        str(output_path)
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if result.returncode == 0 and output_path.exists():
-            logger.info(f"✅ Fusion OK : {output_path.stat().st_size / 1024 / 1024:.1f} Mo")
-            return True
-        logger.error(f"ffmpeg fusion: {result.stderr[:300]}")
-    except Exception as e:
-        logger.error(f"Fusion échouée : {e}")
-    return False
+  <div class="card">
+    <label class="input-label">🔗 Lien de la vidéo</label>
+    <div class="url-input-wrap">
+      <input type="url" id="urlInput" placeholder="https://www.tiktok.com/@user/video/..." />
+      <button class="btn-paste" onclick="pasteUrl()" title="Coller depuis le presse-papier">📋</button>
+    </div>
 
-def dl_video(url: str, output_dir: Path, platform: str) -> Path:
-    uid = str(uuid.uuid4())[:8]
-    video_only = output_dir / f"video_only_{uid}.mp4"
-    audio_only = output_dir / f"audio_only_{uid}.m4a"
-    final_file = output_dir / f"video_{uid}.mp4"
-    cookies = get_cookies_args(platform)
+    <label class="mode-label">📦 Que veux-tu télécharger ?</label>
+    <div class="mode-grid">
+      <div class="mode-btn active" data-mode="video" onclick="selectMode(this)">
+        <span class="icon">🎥</span>
+        <div class="label">Vidéo HD</div>
+        <div class="desc">Format MP4</div>
+      </div>
+      <div class="mode-btn" data-mode="audio" onclick="selectMode(this)">
+        <span class="icon">🔊</span>
+        <div class="label">Audio seul</div>
+        <div class="desc">Format MP3</div>
+      </div>
+      <div class="mode-btn" data-mode="both" onclick="selectMode(this)">
+        <span class="icon">📦</span>
+        <div class="label">Vidéo + Audio</div>
+        <div class="desc">MP4 + MP3</div>
+      </div>
+    </div>
 
-    # TikTok : cibler le format sans filigrane (format_id contient "nowatermark" ou "no_watermark")
-    if platform == "TikTok":
-        logger.info("🎵 Téléchargement TikTok sans filigrane...")
+    <button class="btn-download" id="dlBtn" onclick="startDownload()">⚡ Télécharger maintenant</button>
 
-        # Méthode 1 : format sans filigrane explicite via format_id
-        cmd_nowm = [
-            "yt-dlp", "--no-playlist", "--no-warnings",
-            "-f", "download_addr-2/play_addr_h264-0/play_addr-0/best[ext=mp4]/best",
-            "--merge-output-format", "mp4",
-            "--extractor-args", "tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com",
-            "-o", str(final_file),
-            url
-        ]
-        if run_ytdlp(cmd_nowm) and final_file.exists():
-            logger.info("✅ TikTok sans filigrane (méthode 1)")
-            return final_file
+    <div class="status-box" id="statusBox">
+      <div class="status-text">
+        <div class="spinner"></div>
+        <span id="statusText">Téléchargement en cours...</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
 
-        # Méthode 2 : user-agent mobile + format mp4
-        cmd_mobile = [
-            "yt-dlp", "--no-playlist", "--no-warnings",
-            "-f", "best[ext=mp4]/best",
-            "--merge-output-format", "mp4",
-            "--add-header", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-            "--add-header", "Referer:https://www.tiktok.com/",
-            "-o", str(final_file),
-            url
-        ]
-        if run_ytdlp(cmd_mobile) and final_file.exists():
-            logger.info("✅ TikTok (méthode 2 mobile)")
-            return final_file
+    <div class="error-box" id="errorBox"></div>
 
-        # Méthode 3 : fallback simple
-        cmd_simple = [
-            "yt-dlp", "--no-playlist", "--no-warnings",
-            "--merge-output-format", "mp4",
-            "-o", str(final_file),
-            url
-        ]
-        if run_ytdlp(cmd_simple) and final_file.exists():
-            logger.info("✅ TikTok (fallback)")
-            return final_file
+    <div class="results" id="results">
+      <div class="result-title">✅ Prêt à télécharger !</div>
+      <div id="fileList"></div>
+    </div>
+  </div>
 
-        for f in output_dir.iterdir():
-            if f.suffix in (".webm", ".mkv", ".mov"):
-                return convert_to_mp4(f, final_file)
-        return None
+  <footer>
+    <p>DropVid • Facebook · TikTok · Instagram · Twitter/X</p>
+  </footer>
+</div>
 
-    # YouTube / Facebook / Twitter : vidéo + audio séparés puis fusion
-    cmd_video = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "-f", "bestvideo[height>=720][ext=mp4]/bestvideo[height>=720]/bestvideo[ext=mp4]/bestvideo",
-        "-o", str(video_only),
-    ] + cookies + [url]
+<script>
+  let selectedMode = 'video';
 
-    cmd_audio = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "-f", "bestaudio[ext=m4a]/bestaudio",
-        "-o", str(audio_only),
-    ] + cookies + [url]
+  function selectMode(el) {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    selectedMode = el.dataset.mode;
+  }
 
-    logger.info("📥 Téléchargement flux vidéo...")
-    ok_video = run_ytdlp(cmd_video) and video_only.exists()
+  async function pasteUrl() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = text;
+    } catch(e) {
+      document.getElementById('urlInput').focus();
+    }
+  }
 
-    logger.info("🔊 Téléchargement flux audio...")
-    ok_audio = run_ytdlp(cmd_audio) and audio_only.exists()
+  function showError(msg) {
+    const b = document.getElementById('errorBox');
+    b.textContent = '❌ ' + msg;
+    b.classList.add('show');
+  }
 
-    if ok_video and ok_audio:
-        logger.info("🔗 Fusion vidéo + audio...")
-        if merge_video_audio(video_only, audio_only, final_file):
-            return final_file
+  async function startDownload() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { showError('Colle un lien de vidéo d\'abord !'); return; }
+    if (!url.startsWith('http')) { showError('Le lien doit commencer par https://'); return; }
 
-    # Fallback
-    logger.info("⚠️ Fallback téléchargement direct...")
-    cmd_best = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "-f", "best[ext=mp4]/best",
-        "--merge-output-format", "mp4",
-        "-o", str(final_file),
-    ] + cookies + [url]
+    const btn = document.getElementById('dlBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusText = document.getElementById('statusText');
+    const errorBox = document.getElementById('errorBox');
+    const results = document.getElementById('results');
 
-    if run_ytdlp(cmd_best) and final_file.exists():
-        return final_file
+    btn.disabled = true;
+    btn.textContent = '⏳ En cours...';
+    statusBox.classList.add('show');
+    results.classList.remove('show');
+    errorBox.classList.remove('show');
+    document.getElementById('fileList').innerHTML = '';
 
-    for f in output_dir.iterdir():
-        if f.suffix in (".webm", ".mkv", ".mov"):
-            return convert_to_mp4(f, final_file)
-    return None
+    const msgs = [
+      'Connexion à la plateforme...',
+      'Analyse de la vidéo...',
+      'Téléchargement HD en cours...',
+      'Traitement du fichier...',
+      'Presque prêt...'
+    ];
+    let i = 0;
+    const interval = setInterval(() => { if(i < msgs.length) statusText.textContent = msgs[i++]; }, 4000);
 
-def dl_audio(url: str, output_dir: Path, platform: str) -> Path:
-    uid = str(uuid.uuid4())[:8]
-    output_mp3 = output_dir / f"audio_{uid}.mp3"
-    cookies = get_cookies_args(platform)
+    try {
+      const res = await fetch('/download', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url, mode: selectedMode})
+      });
+      clearInterval(interval);
 
-    extra = []
-    if platform == "TikTok":
-        extra = ["--add-header", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"]
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erreur serveur');
+      }
 
-    cmd = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "-f", "bestaudio",
-        "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0",
-        "-o", str(output_mp3),
-    ] + cookies + extra + [url]
+      const data = await res.json();
+      statusBox.classList.remove('show');
 
-    if run_ytdlp(cmd) and output_mp3.exists():
-        return output_mp3
+      const icons = {video:'🎥', audio:'🔊'};
+      const labels = {video:'Vidéo HD (MP4)', audio:'Audio (MP3)'};
+      const fileList = document.getElementById('fileList');
 
-    output_m4a = output_dir / f"audio_{uid}.m4a"
-    cmd2 = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "-f", "bestaudio[ext=m4a]/bestaudio",
-        "-o", str(output_m4a),
-    ] + cookies + extra + [url]
+      data.files.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.innerHTML = `
+          <div class="file-info">
+            <span class="file-icon">${icons[f.type]||'📁'}</span>
+            <div>
+              <div class="file-name">${labels[f.type]||f.name}</div>
+              <div class="file-meta">${data.platform} • ${f.size}</div>
+            </div>
+          </div>
+          <a class="btn-dl" href="/file?path=${encodeURIComponent(f.path)}&filename=${encodeURIComponent(f.name)}" download>
+            ⬇ Sauvegarder
+          </a>`;
+        fileList.appendChild(card);
+      });
 
-    if run_ytdlp(cmd2) and output_m4a.exists():
-        cmd_conv = [
-            "ffmpeg", "-y", "-i", str(output_m4a),
-            "-codec:a", "libmp3lame", "-qscale:a", "0", str(output_mp3)
-        ]
-        try:
-            result = subprocess.run(cmd_conv, capture_output=True, text=True, timeout=120)
-            if result.returncode == 0 and output_mp3.exists():
-                return output_mp3
-        except Exception as e:
-            logger.error(f"Conversion m4a→mp3: {e}")
-        return output_m4a
-    return None
+      results.classList.add('show');
+    } catch(err) {
+      clearInterval(interval);
+      statusBox.classList.remove('show');
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ Télécharger maintenant';
+    }
+  }
 
-# ── Routes ────────────────────────────────────────────────────────────────────
-
-class DownloadRequest(BaseModel):
-    url: str
-    mode: str  # "video", "audio", "both"
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.post("/download")
-async def download(req: DownloadRequest):
-    url = req.url.strip()
-    mode = req.mode
-
-    if not url.startswith("http"):
-        raise HTTPException(400, "URL invalide")
-
-    platform = detect_platform(url)
-    if not platform:
-        raise HTTPException(400, "Plateforme non supportée. Utilise YouTube, Facebook, Twitter/X ou TikTok.")
-
-    output_dir = DOWNLOAD_DIR / str(uuid.uuid4())
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    result = {"platform": platform, "files": []}
-
-    if mode in ("video", "both"):
-        video = dl_video(url, output_dir, platform)
-        if video and video.exists():
-            result["files"].append({
-                "type": "video",
-                "name": video.name,
-                "path": str(video),
-                "size": f"{video.stat().st_size / 1024 / 1024:.1f} Mo"
-            })
-        elif mode == "video":
-            raise HTTPException(500, "Échec du téléchargement vidéo")
-
-    if mode in ("audio", "both"):
-        audio = dl_audio(url, output_dir, platform)
-        if audio and audio.exists():
-            result["files"].append({
-                "type": "audio",
-                "name": audio.name,
-                "path": str(audio),
-                "size": f"{audio.stat().st_size / 1024 / 1024:.1f} Mo"
-            })
-        elif mode == "audio":
-            raise HTTPException(500, "Échec du téléchargement audio")
-
-    if not result["files"]:
-        raise HTTPException(500, "Échec du téléchargement")
-
-    return result
-
-@app.get("/file")
-async def serve_file(path: str, filename: str):
-    file_path = Path(path)
-    if not file_path.exists():
-        raise HTTPException(404, "Fichier introuvable")
-    return FileResponse(
-        path=str(file_path),
-        filename=filename,
-        media_type="application/octet-stream"
-    )
-
-@app.get("/debug-cookies")
-async def debug_cookies():
-    """Diagnostic : vérifie l'état des cookies et teste YouTube."""
-    info = {}
-
-    if YT_COOKIES_FILE.exists():
-        content = YT_COOKIES_FILE.read_text(encoding="utf-8")
-        lines = content.splitlines()
-        real_lines = [l for l in lines if l.strip() and not l.startswith("#")]
-        info["youtube_cookies"] = {
-            "exists": True,
-            "total_lines": len(lines),
-            "data_lines": len(real_lines),
-            "first_line": lines[0][:80] if lines else "",
-            "last_line": real_lines[-1][:80] if real_lines else "",
-            "has_youtube_domain": any("youtube" in l or ".google" in l for l in real_lines),
-            "size_bytes": YT_COOKIES_FILE.stat().st_size
-        }
-    else:
-        info["youtube_cookies"] = {"exists": False}
-
-    # Tester yt-dlp avec les cookies sur une vidéo publique
-    test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    test_cmd = [
-        "yt-dlp", "--no-playlist", "--no-warnings",
-        "--cookies", str(YT_COOKIES_FILE),
-        "--dump-json", "--no-download", test_url
-    ]
-    try:
-        result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            info["youtube_test"] = "✅ Cookies valides - YouTube accessible"
-        else:
-            err = result.stderr.strip()
-            if "Sign in to confirm" in err or "bot" in err.lower():
-                info["youtube_test"] = "❌ IP Railway bloquée par YouTube (cookies ignorés)"
-            else:
-                info["youtube_test"] = f"❌ Erreur: {err[:300]}"
-    except Exception as e:
-        info["youtube_test"] = f"❌ Exception: {str(e)}"
-
-    # IP du serveur Railway
-    try:
-        ip_result = subprocess.run(
-            ["curl", "-s", "--max-time", "5", "https://api.ipify.org"],
-            capture_output=True, text=True, timeout=10
-        )
-        info["server_ip"] = ip_result.stdout.strip() if ip_result.returncode == 0 else "inconnu"
-    except:
-        info["server_ip"] = "inconnu"
-
-    return info
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startDownload();
+    });
+  });
+</script>
+</body>
+</html>
