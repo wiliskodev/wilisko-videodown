@@ -1,104 +1,133 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DropVid — Téléchargeur de Vidéos By WILISKO</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WILISKO DropVid</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #080b14;
-      --surface: #0f1420;
-      --surface2: #161c2e;
-      --border: rgba(255,255,255,0.07);
-      --accent1: #6c63ff;
-      --accent2: #ff6584;
-      --accent3: #43e8d8;
-      --text: #e8eaf6;
-      --muted: #6b7280;
-      --success: #43e8d8;
-      --error: #ff6584;
+      --bg:#080b14; --surface:#0f1420; --surface2:#161c2e; --border:rgba(255,255,255,.07);
+      --a1:#6c63ff; --a2:#ff6584; --a3:#43e8d8; --text:#e8eaf6; --muted:#6b7280;
     }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
 
-    .bg-mesh { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-    .bg-mesh::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle,rgba(108,99,255,.15) 0%,transparent 70%); top:-200px; left:-200px; animation:drift1 12s ease-in-out infinite alternate; }
-    .bg-mesh::after  { content:''; position:absolute; width:500px; height:500px; background:radial-gradient(circle,rgba(255,101,132,.1) 0%,transparent 70%); bottom:-150px; right:-150px; animation:drift2 10s ease-in-out infinite alternate; }
-    .bg-blob { position:absolute; width:400px; height:400px; background:radial-gradient(circle,rgba(67,232,216,.08) 0%,transparent 70%); top:50%; left:60%; animation:drift3 14s ease-in-out infinite alternate; }
-    @keyframes drift1 { from{transform:translate(0,0)} to{transform:translate(80px,60px)} }
-    @keyframes drift2 { from{transform:translate(0,0)} to{transform:translate(-60px,-40px)} }
-    @keyframes drift3 { from{transform:translate(0,-50%)} to{transform:translate(-40px,calc(-50% + 40px))} }
+```
+.bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-mesh::before{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(108,99,255,.15) 0%,transparent 70%);top:-200px;left:-200px;animation:d1 12s ease-in-out infinite alternate}
+.bg-mesh::after{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(255,101,132,.1) 0%,transparent 70%);bottom:-150px;right:-150px;animation:d2 10s ease-in-out infinite alternate}
+.bg-blob{position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(67,232,216,.08) 0%,transparent 70%);top:50%;left:60%;animation:d3 14s ease-in-out infinite alternate}
+@keyframes d1{from{transform:translate(0,0)}to{transform:translate(80px,60px)}}
+@keyframes d2{from{transform:translate(0,0)}to{transform:translate(-60px,-40px)}}
+@keyframes d3{from{transform:translate(0,-50%)}to{transform:translate(-40px,calc(-50% + 40px))}}
 
-    .container { position:relative; z-index:1; max-width:720px; margin:0 auto; padding:60px 24px 100px; }
+.container{position:relative;z-index:1;max-width:740px;margin:0 auto;padding:50px 20px 100px}
 
-    header { text-align:center; margin-bottom:56px; animation:fadeUp .8s ease both; }
-    .logo { display:inline-flex; align-items:center; gap:10px; margin-bottom:20px; }
-    .logo-icon { width:44px; height:44px; background:linear-gradient(135deg,var(--accent1),var(--accent2)); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
-    .logo-text { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; background:linear-gradient(135deg,#fff 30%,var(--accent1)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    h1 { font-family:'Syne',sans-serif; font-size:clamp(32px,6vw,52px); font-weight:800; line-height:1.1; margin-bottom:16px; }
-    h1 span { background:linear-gradient(135deg,var(--accent1) 0%,var(--accent2) 50%,var(--accent3) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    .subtitle { color:var(--muted); font-size:16px; font-weight:300; }
+header{text-align:center;margin-bottom:48px;animation:fadeUp .8s ease both}
+.logo{display:inline-flex;align-items:center;gap:12px;margin-bottom:16px}
+.logo-icon{width:48px;height:48px;background:linear-gradient(135deg,var(--a1),var(--a2));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.logo-name{display:flex;flex-direction:column;text-align:left}
+.logo-brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.15em;color:var(--a3);text-transform:uppercase}
+.logo-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;background:linear-gradient(135deg,#fff 30%,var(--a1));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+h1{font-family:'Syne',sans-serif;font-size:clamp(28px,5vw,48px);font-weight:800;line-height:1.1;margin-bottom:12px}
+h1 span{background:linear-gradient(135deg,var(--a1),var(--a2) 50%,var(--a3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{color:var(--muted);font-size:15px;font-weight:300}
+.platforms{display:flex;justify-content:center;gap:8px;margin-top:18px;flex-wrap:wrap}
+.badge{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface)}
+.badge.fb{border-color:rgba(24,119,242,.3);color:#60a5fa}
+.badge.tt{border-color:rgba(255,0,80,.3);color:#ff6b9d}
+.badge.ig{border-color:rgba(225,48,108,.3);color:#f9a8d4}
+.badge.tw{border-color:rgba(29,161,242,.3);color:#38bdf8}
 
-    .platforms { display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
-    .badge { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:500; border:1px solid var(--border); background:var(--surface); }
-    .badge.fb { border-color:rgba(24,119,242,.3); color:#60a5fa; }
-    .badge.tt { border-color:rgba(255,0,80,.3); color:#ff6b9d; }
-    .badge.ig { border-color:rgba(225,48,108,.3); color:#f9a8d4; }
-    .badge.tw { border-color:rgba(29,161,242,.3); color:#38bdf8; }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px;animation:fadeUp .8s ease .1s both;position:relative;overflow:hidden;margin-bottom:16px}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--a1),var(--a3),transparent);opacity:.5}
 
-    .card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px; animation:fadeUp .8s ease .1s both; position:relative; overflow:hidden; }
-    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--accent1),var(--accent3),transparent); opacity:.5; }
+.input-label{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.08em}
+.url-row{display:flex;gap:8px;margin-bottom:20px}
+input[type="url"]{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s}
+input[type="url"]:focus{border-color:var(--a1);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+input::placeholder{color:var(--muted)}
+.btn-paste{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;color:var(--muted);cursor:pointer;font-size:17px;transition:all .2s;white-space:nowrap}
+.btn-paste:hover{border-color:var(--a1);color:var(--a1)}
 
-    .input-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:8px; display:block; text-transform:uppercase; letter-spacing:.08em; }
-    .url-input-wrap { display:flex; gap:10px; margin-bottom:24px; }
-    input[type="url"] { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 18px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; outline:none; transition:border-color .2s,box-shadow .2s; }
-    input[type="url"]:focus { border-color:var(--accent1); box-shadow:0 0 0 3px rgba(108,99,255,.15); }
-    input::placeholder { color:var(--muted); }
-    .btn-paste { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; color:var(--muted); cursor:pointer; font-size:18px; transition:all .2s; }
-    .btn-paste:hover { border-color:var(--accent1); color:var(--accent1); }
+/* ── Bouton Analyser ── */
+.btn-analyze{width:100%;padding:13px;background:var(--surface2);border:1px solid var(--a3);border-radius:12px;color:var(--a3);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:16px;letter-spacing:.03em}
+.btn-analyze:hover{background:rgba(67,232,216,.1);transform:translateY(-1px)}
+.btn-analyze:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-    .mode-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:12px; display:block; text-transform:uppercase; letter-spacing:.08em; }
-    .mode-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:24px; }
-    @media(max-width:500px){ .mode-grid{grid-template-columns:1fr;} }
-    .mode-btn { background:var(--surface2); border:1.5px solid var(--border); border-radius:14px; padding:16px 12px; cursor:pointer; text-align:center; transition:all .2s; }
-    .mode-btn:hover { border-color:var(--accent1); transform:translateY(-2px); }
-    .mode-btn.active { border-color:var(--accent1); background:rgba(108,99,255,.1); }
-    .mode-btn .icon { font-size:26px; margin-bottom:6px; display:block; }
-    .mode-btn .label { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--text); }
-    .mode-btn .desc { font-size:11px; color:var(--muted); margin-top:2px; }
+/* ── Info box ── */
+.info-box{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:none;animation:fadeUp .3s ease both}
+.info-box.show{display:block}
+.info-header{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.info-thumb{width:80px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--border)}
+.info-meta{flex:1;min-width:0}
+.info-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.info-uploader{font-size:12px;color:var(--muted)}
+.formats-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.formats-grid{display:flex;flex-wrap:wrap;gap:6px}
+.fmt-chip{padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif}
+.fmt-chip:hover{border-color:var(--a1);color:var(--a1)}
+.fmt-chip.best{border-color:var(--a3);color:var(--a3)}
+.fmt-chip.hd{border-color:rgba(108,99,255,.5);color:var(--a1)}
+.fmt-chip.sd{border-color:var(--border);color:var(--muted)}
+.original-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(67,232,216,.1);border:1px solid rgba(67,232,216,.3);border-radius:999px;font-size:11px;color:var(--a3);font-weight:600;margin-top:8px}
 
-    .btn-download { width:100%; padding:16px; background:linear-gradient(135deg,var(--accent1),var(--accent2)); border:none; border-radius:14px; color:white; font-family:'Syne',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all .2s; letter-spacing:.02em; }
-    .btn-download:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(108,99,255,.4); }
-    .btn-download:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+/* ── Options ── */
+.options-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.toggle-btn{flex:1;min-width:140px;padding:12px 16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;text-align:left;transition:all .2s;display:flex;align-items:center;gap:10px}
+.toggle-btn.active{border-color:var(--a1);background:rgba(108,99,255,.1)}
+.toggle-btn:hover{border-color:var(--a1)}
+.toggle-icon{font-size:20px;flex-shrink:0}
+.toggle-label{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text)}
+.toggle-desc{font-size:11px;color:var(--muted);margin-top:1px}
 
-    .status-box { margin-top:20px; padding:16px 20px; border-radius:14px; border:1px solid var(--border); background:var(--surface2); display:none; animation:fadeUp .3s ease both; }
-    .status-box.show { display:block; }
-    .status-text { font-size:14px; display:flex; align-items:center; gap:10px; }
-    .spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent1); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
-    @keyframes spin { to{transform:rotate(360deg)} }
-    .progress-bar { height:3px; background:var(--border); border-radius:999px; margin-top:12px; overflow:hidden; }
-    .progress-fill { height:100%; background:linear-gradient(90deg,var(--accent1),var(--accent3)); border-radius:999px; animation:progressAnim 1.5s ease infinite; }
-    @keyframes progressAnim { 0%{width:0%;margin-left:0%} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+/* ── Mode téléchargement ── */
+.mode-label{font-size:12px;font-weight:500;color:var(--muted);margin-bottom:10px;display:block;text-transform:uppercase;letter-spacing:.08em}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
+@media(max-width:480px){.mode-grid{grid-template-columns:1fr}}
+.mode-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;transition:all .2s}
+.mode-btn:hover{border-color:var(--a1);transform:translateY(-2px)}
+.mode-btn.active{border-color:var(--a1);background:rgba(108,99,255,.1)}
+.mode-btn .icon{font-size:24px;margin-bottom:5px;display:block}
+.mode-btn .lbl{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text)}
+.mode-btn .dsc{font-size:10px;color:var(--muted);margin-top:2px}
 
-    .results { margin-top:20px; display:none; animation:fadeUp .4s ease both; }
-    .results.show { display:block; }
-    .result-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--success); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
-    .file-card { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; transition:border-color .2s; }
-    .file-card:hover { border-color:var(--accent1); }
-    .file-info { display:flex; align-items:center; gap:12px; }
-    .file-icon { font-size:28px; }
-    .file-name { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; }
-    .file-meta { font-size:12px; color:var(--muted); margin-top:2px; }
-    .btn-dl { background:linear-gradient(135deg,var(--accent1),var(--accent3)); border:none; border-radius:10px; padding:10px 20px; color:white; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:all .2s; white-space:nowrap; }
-    .btn-dl:hover { transform:translateY(-1px); box-shadow:0 4px 15px rgba(108,99,255,.4); }
+.btn-download{width:100%;padding:15px;background:linear-gradient(135deg,var(--a1),var(--a2));border:none;border-radius:14px;color:white;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+.btn-download:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(108,99,255,.4)}
+.btn-download:disabled{opacity:.6;cursor:not-allowed;transform:none}
 
-    .error-box { margin-top:16px; padding:14px 18px; background:rgba(255,101,132,.1); border:1px solid rgba(255,101,132,.3); border-radius:12px; color:var(--error); font-size:14px; display:none; }
-    .error-box.show { display:block; animation:fadeUp .3s ease both; }
+.status-box{margin-top:16px;padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);display:none;animation:fadeUp .3s ease both}
+.status-box.show{display:block}
+.status-text{font-size:13px;display:flex;align-items:center;gap:10px}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--a1);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-bar{height:2px;background:var(--border);border-radius:999px;margin-top:10px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--a1),var(--a3));animation:prog 1.5s ease infinite}
+@keyframes prog{0%{width:0%;margin-left:0%}50%{width:60%;margin-left:20%}100%{width:0%;margin-left:100%}}
 
-    footer { text-align:center; margin-top:48px; color:var(--muted); font-size:13px; animation:fadeUp .8s ease .3s both; }
+.results{margin-top:16px;display:none;animation:fadeUp .4s ease both}
+.results.show{display:block}
+.result-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--a3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.file-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;transition:border-color .2s}
+.file-card:hover{border-color:var(--a1)}
+.file-info{display:flex;align-items:center;gap:10px}
+.file-icon{font-size:26px}
+.file-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:600}
+.file-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.btn-dl{background:linear-gradient(135deg,var(--a1),var(--a3));border:none;border-radius:9px;padding:9px 18px;color:white;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
+.btn-dl:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(108,99,255,.4)}
 
-    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.error-box{margin-top:14px;padding:12px 16px;background:rgba(255,101,132,.1);border:1px solid rgba(255,101,132,.3);border-radius:10px;color:#ff6584;font-size:13px;display:none}
+.error-box.show{display:block;animation:fadeUp .3s ease both}
+
+footer{text-align:center;margin-top:40px;color:var(--muted);font-size:12px;animation:fadeUp .8s ease .3s both}
+.footer-brand{font-family:'Syne',sans-serif;font-weight:700;color:var(--a1);margin-bottom:4px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+```
+
   </style>
 </head>
 <body>
@@ -108,10 +137,13 @@
   <header>
     <div class="logo">
       <div class="logo-icon">⚡</div>
-      <span class="logo-text">DropVid</span>
+      <div class="logo-name">
+        <span class="logo-brand">WILISKO</span>
+        <span class="logo-title">DropVid</span>
+      </div>
     </div>
     <h1>Télécharge n'importe<br/><span>quelle vidéo</span></h1>
-    <p class="subtitle">MP4 HD • MP3 • Sans filigrane • Sans inscription</p>
+    <p class="subtitle">Qualité originale • Sans filigrane • Sans inscription</p>
     <div class="platforms">
       <span class="badge fb">f Facebook</span>
       <span class="badge tt">🎵 TikTok</span>
@@ -121,61 +153,100 @@
   </header>
 
   <div class="card">
-    <label class="input-label">🔗 Lien de la vidéo</label>
-    <div class="url-input-wrap">
-      <input type="url" id="urlInput" placeholder="https://www.tiktok.com/@user/video/..." />
-      <button class="btn-paste" onclick="pasteUrl()" title="Coller depuis le presse-papier">📋</button>
+
+```
+<!-- URL -->
+<label class="input-label">🔗 Lien de la vidéo</label>
+<div class="url-row">
+  <input type="url" id="urlInput" placeholder="https://www.tiktok.com/@user/video/..."/>
+  <button class="btn-paste" onclick="pasteUrl()" title="Coller">📋</button>
+</div>
+
+<!-- Analyser -->
+<button class="btn-analyze" id="analyzeBtn" onclick="analyzeVideo()">
+  🔍 Analyser le format de la vidéo
+</button>
+
+<!-- Info box (résultats analyse) -->
+<div class="info-box" id="infoBox">
+  <div class="info-header">
+    <img class="info-thumb" id="infoThumb" src="" alt=""/>
+    <div class="info-meta">
+      <div class="info-title" id="infoTitle">—</div>
+      <div class="info-uploader" id="infoUploader"></div>
+      <div class="original-badge" id="infoOriginal"></div>
     </div>
+  </div>
+  <div class="formats-title">📊 Formats disponibles</div>
+  <div class="formats-grid" id="formatsGrid"></div>
+</div>
 
-    <label class="mode-label">📦 Que veux-tu télécharger ?</label>
-    <div class="mode-grid">
-      <div class="mode-btn active" data-mode="video" onclick="selectMode(this)">
-        <span class="icon">🎥</span>
-        <div class="label">Vidéo HD</div>
-        <div class="desc">Format MP4</div>
-      </div>
-      <div class="mode-btn" data-mode="audio" onclick="selectMode(this)">
-        <span class="icon">🔊</span>
-        <div class="label">Audio seul</div>
-        <div class="desc">Format MP3</div>
-      </div>
-      <div class="mode-btn" data-mode="both" onclick="selectMode(this)">
-        <span class="icon">📦</span>
-        <div class="label">Vidéo + Audio</div>
-        <div class="desc">MP4 + MP3</div>
-      </div>
+<!-- Options -->
+<div class="options-row">
+  <div class="toggle-btn" id="hdToggle" onclick="toggleHD()">
+    <span class="toggle-icon">🚀</span>
+    <div>
+      <div class="toggle-label">Forcer la HD</div>
+      <div class="toggle-desc">1080p minimum</div>
     </div>
+  </div>
+</div>
 
-    <button class="btn-download" id="dlBtn" onclick="startDownload()">⚡ Télécharger maintenant</button>
+<!-- Mode -->
+<label class="mode-label">📦 Que veux-tu télécharger ?</label>
+<div class="mode-grid">
+  <div class="mode-btn active" data-mode="video" onclick="selectMode(this)">
+    <span class="icon">🎥</span>
+    <div class="lbl">Vidéo HD</div>
+    <div class="dsc">Format MP4</div>
+  </div>
+  <div class="mode-btn" data-mode="audio" onclick="selectMode(this)">
+    <span class="icon">🔊</span>
+    <div class="lbl">Audio seul</div>
+    <div class="dsc">Format MP3</div>
+  </div>
+  <div class="mode-btn" data-mode="both" onclick="selectMode(this)">
+    <span class="icon">📦</span>
+    <div class="lbl">Vidéo + Audio</div>
+    <div class="dsc">MP4 + MP3</div>
+  </div>
+</div>
 
-    <div class="status-box" id="statusBox">
-      <div class="status-text">
-        <div class="spinner"></div>
-        <span id="statusText">Téléchargement en cours...</span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill"></div></div>
-    </div>
+<button class="btn-download" id="dlBtn" onclick="startDownload()">⚡ Télécharger maintenant</button>
 
-    <div class="error-box" id="errorBox"></div>
+<div class="status-box" id="statusBox">
+  <div class="status-text"><div class="spinner"></div><span id="statusText">En cours...</span></div>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+</div>
+<div class="error-box" id="errorBox"></div>
+<div class="results" id="results">
+  <div class="result-title">✅ Prêt à télécharger !</div>
+  <div id="fileList"></div>
+</div>
+```
 
-    <div class="results" id="results">
-      <div class="result-title">✅ Prêt à télécharger !</div>
-      <div id="fileList"></div>
-    </div>
   </div>
 
   <footer>
-    <p>DropVid • Facebook · TikTok · Instagram · Twitter/X</p>
+    <div class="footer-brand">WILISKO DropVid</div>
+    <p>Facebook · TikTok · Instagram · Twitter/X</p>
   </footer>
 </div>
 
 <script>
   let selectedMode = 'video';
+  let forceHD = false;
 
   function selectMode(el) {
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     selectedMode = el.dataset.mode;
+  }
+
+  function toggleHD() {
+    forceHD = !forceHD;
+    const btn = document.getElementById('hdToggle');
+    btn.classList.toggle('active', forceHD);
   }
 
   async function pasteUrl() {
@@ -192,29 +263,91 @@
     b.textContent = '❌ ' + msg;
     b.classList.add('show');
   }
+  function hideError() { document.getElementById('errorBox').classList.remove('show'); }
+
+  async function analyzeVideo() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { showError('Colle un lien d\'abord !'); return; }
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Analyse en cours...';
+    hideError();
+    document.getElementById('infoBox').classList.remove('show');
+
+    try {
+      const res = await fetch('/info', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url})
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erreur analyse');
+      }
+      const data = await res.json();
+      displayInfo(data);
+    } catch(e) {
+      showError(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 Analyser le format de la vidéo';
+    }
+  }
+
+  function displayInfo(data) {
+    document.getElementById('infoTitle').textContent = data.title || 'Vidéo';
+    document.getElementById('infoUploader').textContent = data.uploader ? '👤 ' + data.uploader : '';
+
+    const thumb = document.getElementById('infoThumb');
+    if (data.thumbnail) { thumb.src = data.thumbnail; thumb.style.display = 'block'; }
+    else { thumb.style.display = 'none'; }
+
+    const orig = data.original_format;
+    const origEl = document.getElementById('infoOriginal');
+    if (orig) {
+      let txt = `📹 Format original : ${orig.label}`;
+      if (orig.fps) txt += ` • ${orig.fps}fps`;
+      if (orig.bitrate_kbps) txt += ` • ${orig.bitrate_kbps} kbps`;
+      origEl.textContent = txt;
+    }
+
+    const grid = document.getElementById('formatsGrid');
+    grid.innerHTML = '';
+    (data.all_formats || []).forEach((f, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'fmt-chip ' + (i === 0 ? 'best' : f.height >= 720 ? 'hd' : 'sd');
+      let label = f.label;
+      if (f.fps) label += ` ${f.fps}fps`;
+      if (i === 0) label += ' ★';
+      chip.textContent = label;
+      chip.title = f.bitrate_kbps ? `${f.bitrate_kbps} kbps` : '';
+      grid.appendChild(chip);
+    });
+
+    document.getElementById('infoBox').classList.add('show');
+  }
 
   async function startDownload() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) { showError('Colle un lien de vidéo d\'abord !'); return; }
-    if (!url.startsWith('http')) { showError('Le lien doit commencer par https://'); return; }
 
     const btn = document.getElementById('dlBtn');
     const statusBox = document.getElementById('statusBox');
     const statusText = document.getElementById('statusText');
-    const errorBox = document.getElementById('errorBox');
     const results = document.getElementById('results');
 
     btn.disabled = true;
     btn.textContent = '⏳ En cours...';
     statusBox.classList.add('show');
     results.classList.remove('show');
-    errorBox.classList.remove('show');
+    hideError();
     document.getElementById('fileList').innerHTML = '';
 
     const msgs = [
       'Connexion à la plateforme...',
       'Analyse de la vidéo...',
-      'Téléchargement HD en cours...',
+      forceHD ? 'Recherche de la meilleure qualité HD...' : 'Téléchargement en qualité originale...',
       'Traitement du fichier...',
       'Presque prêt...'
     ];
@@ -225,7 +358,7 @@
       const res = await fetch('/download', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({url, mode: selectedMode})
+        body: JSON.stringify({url, mode: selectedMode, force_hd: forceHD})
       });
       clearInterval(interval);
 
@@ -238,7 +371,7 @@
       statusBox.classList.remove('show');
 
       const icons = {video:'🎥', audio:'🔊'};
-      const labels = {video:'Vidéo HD (MP4)', audio:'Audio (MP3)'};
+      const labels = {video:'Vidéo (MP4)', audio:'Audio (MP3)'};
       const fileList = document.getElementById('fileList');
 
       data.files.forEach(f => {
@@ -252,12 +385,9 @@
               <div class="file-meta">${data.platform} • ${f.size}</div>
             </div>
           </div>
-          <a class="btn-dl" href="/file?path=${encodeURIComponent(f.path)}&filename=${encodeURIComponent(f.name)}" download>
-            ⬇ Sauvegarder
-          </a>`;
+          <a class="btn-dl" href="/file?path=${encodeURIComponent(f.path)}&filename=${encodeURIComponent(f.name)}" download>⬇ Sauvegarder</a>`;
         fileList.appendChild(card);
       });
-
       results.classList.add('show');
     } catch(err) {
       clearInterval(interval);
@@ -275,5 +405,6 @@
     });
   });
 </script>
+
 </body>
 </html>
